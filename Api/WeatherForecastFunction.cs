@@ -7,47 +7,63 @@ using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Extensions.Logging;
 
 using BlazorApp.Shared;
+using System.Threading.Tasks;
 
 namespace BlazorApp.Api
 {
-    public static class WeatherForecastFunction
-    {
-        private static string GetSummary(int temp)
-        {
-            var summary = "Mild";
+	public static class WeatherForecastFunction
+	{
+		private static string GetSummary(int temp)
+		{
+			var summary = "Mild";
 
-            if (temp >= 32)
-            {
-                summary = "Hot";
-            }
-            else if (temp <= 16 && temp > 0)
-            {
-                summary = "Cold";
-            }
-            else if (temp <= 0)
-            {
-                summary = "Freezing!";
-            }
+			if (temp >= 32)
+			{
+				summary = "Hot";
+			}
+			else if (temp <= 16 && temp > 0)
+			{
+				summary = "Cold";
+			}
+			else if (temp <= 0)
+			{
+				summary = "Freezing!";
+			}
 
-            return summary;
-        }
+			return summary;
+		}
 
-        [FunctionName("WeatherForecast")]
-        public static IActionResult Run(
-            [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = null)] HttpRequest req,
-            ILogger log)
-        {
-            var randomNumber = new Random();
-            var temp = 0;
+		[FunctionName("WeatherForecast")]
+		public static async Task<IActionResult> Run(
+				[HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = null)] HttpRequest req,
+				ILogger log)
+		{
+			var randomNumber = new Random();
+			var temp = 0;
 
-            var result = Enumerable.Range(1, 5).Select(index => new WeatherForecast
-            {
-                Date = DateTime.Now.AddDays(index),
-                TemperatureC = temp = randomNumber.Next(-20, 55),
-                Summary = GetSummary(temp)
-            }).ToArray();
+			var token = req.HttpContext.RequestAborted;
 
-            return new OkObjectResult(result);
-        }
-    }
+			try
+			{
+				await Task.Delay(10000, token);
+			} catch (OperationCanceledException)
+			{
+				// continue
+				Console.WriteLine("Cancelled");
+				return default;
+			}
+
+			if (token.IsCancellationRequested) Console.WriteLine("Cancelled");
+
+
+			var result = Enumerable.Range(1, 5).Select(index => new WeatherForecast
+			{
+				Date = DateTime.Now.AddDays(index),
+				TemperatureC = temp = randomNumber.Next(-20, 55),
+				Summary = GetSummary(temp)
+			}).ToArray();
+
+			return new OkObjectResult(result);
+		}
+	}
 }
